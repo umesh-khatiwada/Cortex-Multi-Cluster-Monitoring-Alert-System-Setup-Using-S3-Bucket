@@ -1,6 +1,23 @@
-# Cortex Monitoring Setup
+# Cortex Multi-Cluster Monitoring and Alerting on AWS S3
 
 This repository contains automated bash scripts for setting up a complete Cortex monitoring infrastructure with Prometheus on Kubernetes. The setup includes a main cluster with Cortex and worker clusters that send metrics to the main cluster.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [File Structure](#file-structure)
+- [Setup Instructions](#setup-instructions)
+- [Configuration Details](#configuration-details)
+- [Accessing the Services](#accessing-the-services)
+- [Troubleshooting](#troubleshooting)
+- [Security Considerations](#security-considerations)
+- [Scaling](#scaling)
+- [Maintenance](#maintenance)
+- [Support](#support)
+- [License](#license)
+- [Author](#author)
 
 ## Overview
 
@@ -70,14 +87,12 @@ The monitoring setup consists of:
 - AWS Access Key ID and Secret Access Key
 
 ### Default Credentials
-- **Nginx Basic Auth**: 
-  - Username: `openuser`
-  - Password: `openuser`
+- **Nginx Basic Auth**: the scripts ship with a demo user, `openuser`. Replace it with your own credentials (see `adminPass` / `remoteUser` in `main_cluster/env_variables.sh`).
 
 ## File Structure
 
 ```
-bash_monitoring/
+<repo-root>/
 ├── main_cluster/
 │   ├── cortexMainCluster.sh    # Main deployment script
 │   ├── env_variables.sh        # Environment variables and S3 configuration
@@ -109,6 +124,10 @@ blocks_SecretAccessKey=YOUR_AWS_SECRET_ACCESS_KEY
 blocks_Endpoint=s3.your-region.amazonaws.com
 blocks_Region=your-aws-region
 ```
+
+> Note: in the repository's `env_variables.sh` the blocks region variable is spelled `rblocks_Region` while `helper.sh` reads `$blocks_Region`. Make sure the variable `helper.sh` expects (`blocks_Region`) is set, otherwise the blocks region will be empty.
+
+Never commit real AWS keys; the values in `env_variables.sh` are placeholders.
 
 #### Step 2: Deploy Main Cluster
 
@@ -158,7 +177,7 @@ When prompted, provide:
 Example:
 ```
 Enter Cortex-nginx IP or Domain: http://192.168.1.100
-Enter Basic Auth username and password: openuser openuser
+Enter Basic Auth username and password: <user> <password>
 ```
 
 ## Configuration Details
@@ -179,7 +198,7 @@ Enter Basic Auth username and password: openuser openuser
 
 #### Prometheus Configuration
 - **Remote Write**: Configured to send metrics to Cortex
-- **Retention**: 10 days
+- **Retention**: 10 days (`retention: 10d` in `helper.sh`)
 - **RBAC**: Full cluster monitoring permissions
 
 ### Worker Cluster Components
@@ -200,20 +219,13 @@ kubectl get svc cortex-nginx -n cortex
 
 2. **Access Cortex API**:
 ```bash
-curl -u openuser:openuser http://<NGINX_IP>/api/prom/query?query=up
+curl -u <user>:<password> http://<NGINX_IP>/api/prom/query?query=up
 ```
 
 3. **Access Prometheus**:
 ```bash
 kubectl get svc prometheus-app
 ```
-
-### Grafana Dashboards
-
-If you have Grafana installed, you can import the following dashboards:
-- Cortex Overview Dashboard
-- Kubernetes Cluster Monitoring Dashboard
-- Prometheus Stats Dashboard
 
 ## Troubleshooting
 
@@ -255,10 +267,10 @@ kubectl logs -l app=consul -n cortex
 kubectl get cm cortex -n cortex -o yaml
 
 # Check Prometheus targets
-curl -u openuser:openuser http://<NGINX_IP>/prometheus/api/v1/targets
+curl -u <user>:<password> http://<NGINX_IP>/prometheus/api/v1/targets
 
 # View metrics
-curl -u openuser:openuser http://<NGINX_IP>/api/prom/query?query=cortex_ingester_samples_in_total
+curl -u <user>:<password> http://<NGINX_IP>/api/prom/query?query=cortex_ingester_samples_in_total
 
 # Scale components
 kubectl scale deployment cortex-distributor -n cortex --replicas=3
@@ -280,14 +292,6 @@ kubectl scale deployment cortex-distributor -n cortex --replicas=3
 - `cortex_distributor_samples_in_total`: Distribution rate
 - `cortex_query_frontend_queries_total`: Query rate
 - `prometheus_remote_storage_samples_failed_total`: Remote write failures
-
-### Alerting Rules
-
-The setup includes basic alerting rules for:
-- High ingestion latency
-- Failed remote writes
-- Component unavailability
-- S3 storage issues
 
 ## Scaling
 
@@ -338,4 +342,8 @@ For issues and questions:
 
 ## License
 
-This project is part of Open Source Project.
+Released under the [MIT License](LICENSE).
+
+## Author
+
+[Umesh Khatiwada](https://github.com/umesh-khatiwada)
